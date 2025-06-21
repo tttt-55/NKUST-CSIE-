@@ -1,4 +1,6 @@
 import 'package:flutter/material.dart';
+import 'dart:async';
+import 'dart:math';
 
 void main() {
   runApp(const MyApp());
@@ -11,119 +13,151 @@ class MyApp extends StatelessWidget {
   Widget build(BuildContext context) {
     return MaterialApp(
       debugShowCheckedModeBanner: false,
-      home: const SelfIntroductionPage(),
+      title: '敲木魚遊戲',
+      home: const CounterGame(),
     );
   }
 }
 
-class SelfIntroductionPage extends StatefulWidget {
-  const SelfIntroductionPage({super.key});
+class CounterGame extends StatefulWidget {
+  const CounterGame({super.key});
 
   @override
-  State<SelfIntroductionPage> createState() => _SelfIntroductionPageState();
+  State<CounterGame> createState() => _CounterGameState();
 }
 
-class _SelfIntroductionPageState extends State<SelfIntroductionPage> {
-  // 照片和文字的數據
-  final List<Map<String, dynamic>> _content = [
-    {
-      'image': 'https://drive.google.com/uc?export=view&id=16OifO2SwMi4AmOzPcKC0sTYADO5IXcon',
-      'text': '我是 **小夜**，一個 **水瓶座男孩**，總是追逐著屬於自己的世界。\n'
-          '孤獨的我，喜歡 **騎車看風景**，那些 **日落與山巒**，似乎才是對我的回應。\n'
-          '或許，我是一個不被人注意的 **旅人**，但每一次孤獨的旅途，總讓我找到屬於自己的溫暖。',
-      'alignment': Alignment.centerLeft, // 調整人物偏左對齊
-    },
-    {
-      'image': 'https://drive.google.com/uc?export=view&id=1y7ntmOx_II3oVPzgQl64--y-kpVm9dCD',
-      'text': '我是 **街拍攝影師**，總是用鏡頭捕捉 **城市角落的故事**。\n'
-          '在這些光影交錯的瞬間，我找到了和這個世界對話的方式。\n'
-          '但孤獨，總是如影隨形。也許，只有 **快門按下的那刻**，我才感覺被世界擁抱。',
-      'alignment': Alignment.center, // 預設居中
-    },
-    {
-      'image': 'https://drive.google.com/uc?export=view&id=19jd0RHf0Rk0je_GwDROVZDWS3Q8GWX1V',
-      'text': '寂寞的時候，我會望著自己的作品。\n'
-          '每一張照片，都是我與這個世界的獨白。\n'
-          '**孤單** 並不可怕，可怕的是 **找不到自己的歸屬**。\n'
-          '幸好，我有相機，它讓我能將孤獨變成永恆的記錄。',
-      'alignment': Alignment.center, // 預設居中
-    },
-    {
-      'image': 'https://drive.google.com/uc?export=view&id=1U599GCprH0d5_VGcZ6Rlmd9WntO0fFF3',
-      'text': '我的生活不止於拍照，還有 **打工**。\n'
-          '日復一日，我將時間耗在工作中，朋友的邀約，也變成了無聲的沉默。\n'
-          '**忙碌的現實** 讓我與世界越走越遠，但我知道，\n'
-          '**相機**，將永遠是我心靈的歸宿，\n'
-          '**風景**，將永遠是我孤單的夥伴。',
-      'alignment': Alignment.center, // 預設居中
-    },
-  ];
+class _CounterGameState extends State<CounterGame> {
+  int _score = 0;
+  int _timeLeft = 30;
+  bool _isPlaying = false;
+  Timer? _timer;
+  double _scale = 1.0;
+  bool _showPunish = false;
+  final Random _random = Random();
 
-  int _currentIndex = 0; // 當前內容的索引
-
-  // 方法：切換內容
-  void _nextContent() {
+  void _startGame() {
     setState(() {
-      _currentIndex = (_currentIndex + 1) % _content.length;
+      _score = 0;
+      _timeLeft = 30;
+      _isPlaying = true;
+      _showPunish = false;
     });
+
+    _timer = Timer.periodic(const Duration(seconds: 1), (timer) {
+      if (_timeLeft > 0) {
+        setState(() {
+          _timeLeft--;
+        });
+      } else {
+        _endGame();
+      }
+    });
+  }
+
+  void _endGame() {
+    _timer?.cancel();
+    setState(() {
+      _isPlaying = false;
+    });
+    _showGameOverDialog();
+  }
+
+  void _showGameOverDialog() {
+    showDialog(
+      context: context,
+      builder: (context) {
+        return AlertDialog(
+          title: const Text('遊戲結束'),
+          content: Text('你的分數是：$_score'),
+          actions: [
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: const Text('確定'),
+            ),
+          ],
+        );
+      },
+    );
+  }
+
+  Future<void> _handleTap() async {
+    if (_isPlaying) {
+      setState(() {
+        if (_showPunish) {
+          _score = (_score >= 2) ? _score - 2 : 0;
+        } else {
+          _score++;
+        }
+        _scale = 1.2;
+      });
+
+      await Future.delayed(const Duration(milliseconds: 200));
+      setState(() {
+        _scale = 1.0;
+        _showPunish = _random.nextDouble() < 0.15; // 15% 機率出現懲罰圖
+      });
+    }
+  }
+
+  void _skipPunishImage() {
+    if (_isPlaying && _showPunish) {
+      setState(() {
+        _showPunish = false; // 換成正常圖
+      });
+    }
   }
 
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      backgroundColor: Colors.white, // 背景顏色
+      appBar: AppBar(
+        title: const Text('敲木魚遊戲'),
+        centerTitle: true,
+      ),
       body: Center(
         child: Column(
           mainAxisAlignment: MainAxisAlignment.center,
           children: [
-            // 圖片部分
-            Container(
-              padding: const EdgeInsets.all(10), // 裱框間距
-              decoration: BoxDecoration(
-                color: Colors.grey[300], // 裱框顏色
-                borderRadius: BorderRadius.circular(15), // 圓角
-              ),
-              child: ClipRRect(
-                borderRadius: BorderRadius.circular(10), // 圖片圓角
-                child: Image.network(
-                  _content[_currentIndex]['image'], // 動態圖片
-                  width: 300, // 圖片寬度
-                  height: 400, // 圖片高度
-                  fit: BoxFit.cover, // 圖片填充
-                  alignment: _content[_currentIndex]['alignment'], // 動態調整圖片對齊方式
+            Text(
+              '剩餘時間：$_timeLeft 秒',
+              style: const TextStyle(fontSize: 24, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 20),
+            Text(
+              '分數：$_score',
+              style: const TextStyle(fontSize: 36, fontWeight: FontWeight.bold),
+            ),
+            const SizedBox(height: 40),
+            GestureDetector(
+              onTap: _handleTap,
+              child: AnimatedScale(
+                scale: _scale,
+                duration: const Duration(milliseconds: 200),
+                child: Image.asset(
+                  _showPunish ? 'assets/p2.png' : 'assets/p1.png',
+                  width: 150,
+                  height: 150,
+                  fit: BoxFit.cover,
                 ),
               ),
             ),
-            const SizedBox(height: 20), // 與文字的間距
-            // 自我介紹文字部分
-            Padding(
-              padding: const EdgeInsets.symmetric(horizontal: 20),
-              child: Text.rich(
-                TextSpan(
-                  children: [
-                    TextSpan(
-                      text: _content[_currentIndex]['text'],
-                      style: const TextStyle(
-                        fontSize: 18, // 字體大小
-                        fontWeight: FontWeight.normal, // 標準字體
-                        color: Colors.black87, // 字體顏色
-                      ),
-                    ),
-                  ],
+            const SizedBox(height: 20),
+            if (_showPunish)
+              ElevatedButton(
+                onPressed: _skipPunishImage,
+                style: ElevatedButton.styleFrom(
+                  backgroundColor: Colors.red,
                 ),
-                textAlign: TextAlign.center,
+                child: const Text('跳過貪念'),
               ),
-            ),
-            const SizedBox(height: 30), // 與按鈕的間距
-            // 按鈕部分
-            ElevatedButton(
-              onPressed: _nextContent,
-              style: ElevatedButton.styleFrom(
-                padding: const EdgeInsets.symmetric(horizontal: 20, vertical: 10),
-                textStyle: const TextStyle(fontSize: 18),
+            const SizedBox(height: 40),
+            if (!_isPlaying)
+              ElevatedButton(
+                onPressed: _startGame,
+                child: const Text('開始遊戲'),
               ),
-              child: const Text('下一頁'),
-            ),
           ],
         ),
       ),
